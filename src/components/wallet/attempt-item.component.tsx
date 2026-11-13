@@ -1,10 +1,18 @@
-import { AttemptStatus, type RechargeAttempt } from '../../types/wallet.types.ts';
+import {
+  AttemptStatus,
+  WebhookOutcome,
+  WebhookStatus,
+  type RechargeAttempt,
+} from '../../types/wallet.types.ts';
 import { formatMoney, formatTime, shortId } from '../../utils/format.util.ts';
 import { StatusBadge, type BadgeTone } from '../common/status-badge.component.tsx';
 
-interface StatusView {
+interface BadgeView {
   tone: BadgeTone;
   label: string;
+}
+
+interface StatusView extends BadgeView {
   icon: string;
 }
 
@@ -16,10 +24,19 @@ const STATUS_VIEW: Record<AttemptStatus, StatusView> = {
   [AttemptStatus.ERROR]: { tone: 'warning', label: 'error', icon: '!' },
 };
 
+/** Cómo se muestra lo que hizo el backend con cada webhook. */
+const OUTCOME_VIEW: Record<WebhookOutcome, BadgeView> = {
+  [WebhookOutcome.APPLIED]: { tone: 'success', label: 'aplicado' },
+  [WebhookOutcome.DUPLICATE]: { tone: 'neutral', label: 'duplicado, ignorado' },
+  [WebhookOutcome.CONFLICT]: { tone: 'warning', label: 'conflicto, no cambia nada' },
+  [WebhookOutcome.IGNORED]: { tone: 'neutral', label: 'ignorado' },
+  [WebhookOutcome.ERROR]: { tone: 'danger', label: 'error' },
+};
+
 interface AttemptItemProps {
   attempt: RechargeAttempt;
   onRetry: (key: string) => void;
-  onWebhook: (key: string, status: 'approved' | 'declined') => void;
+  onWebhook: (key: string, status: WebhookStatus) => void;
   onDuplicateWebhook: (key: string) => void;
 }
 
@@ -32,6 +49,9 @@ export const AttemptItem = ({
 }: AttemptItemProps) => {
   const view = STATUS_VIEW[attempt.status];
   const hasOperation = attempt.operationId !== null;
+  const isWaitingProvider = attempt.status === AttemptStatus.PENDING && hasOperation;
+  const sendApproved = () => onWebhook(attempt.idempotencyKey, WebhookStatus.APPROVED);
+  const sendDeclined = () => onWebhook(attempt.idempotencyKey, WebhookStatus.DECLINED);
 
   return (
     <li className="attempt">
@@ -85,19 +105,19 @@ export const AttemptItem = ({
           <button className="button button--small" onClick={() => onRetry(attempt.idempotencyKey)}>
             Reintentar (misma key)
           </button>
-          <span className="attempt__provider">Simular la pasarela</span>
+          <span className="attempt__provider">Simular la pasarela (POST /webhooks/payment)</span>
           <div className="attempt__webhooks">
             <button
               className="button button--small"
               disabled={!hasOperation}
-              onClick={() => onWebhook(attempt.idempotencyKey, 'approved')}
+              onClick={sendApproved}
             >
               approved
             </button>
             <button
               className="button button--small"
               disabled={!hasOperation}
-              onClick={() => onWebhook(attempt.idempotencyKey, 'declined')}
+              onClick={sendDeclined}
             >
               declined
             </button>
@@ -111,6 +131,39 @@ export const AttemptItem = ({
           </div>
         </div>
       </details>
+
+      {isWaitingProvider && (
+        <div className="provider-callout">
+          <p>
+            <strong>Esperando a la pasarela.</strong> Simula su webhook:
+          </p>
+          <div className="attempt__webhooks">
+            <button className="button button--small button--success" onClick={sendApproved}>
+              ✓ approved
+            </button>
+            <button className="button button--small button--danger" onClick={sendDeclined}>
+              ✕ declined
+            </button>
+          </div>
+        </div>
+      )}
+
+      {attempt.webhooks.length > 0 && (
+        <ul className="webhook-notices" aria-label="Webhooks recibidos por el backend">
+          {attempt.webhooks.map((notice, index) => {
+            const outcome = OUTCOME_VIEW[notice.outcome];
+            return (
+              <li key={index}>
+                <span className="muted">Webhook {notice.status} →</span>
+                <StatusBadge tone={outcome.tone}>
+                  {outcome.label}
+                  {notice.outcome === WebhookOutcome.ERROR && ` (HTTP ${notice.httpStatus})`}
+                </StatusBadge>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </li>
   );
 };

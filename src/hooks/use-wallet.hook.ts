@@ -7,6 +7,7 @@ import type { ApiCall } from '../types/api-call.types.ts';
 import {
   AttemptStatus,
   FINAL_ATTEMPT_STATUSES,
+  WebhookStatus,
   type RechargeAttempt,
 } from '../types/wallet.types.ts';
 import {
@@ -14,6 +15,7 @@ import {
   balanceFromAttempts,
   createAttempt,
 } from '../utils/recharge-attempt.util.ts';
+import { toWebhookNotice } from '../utils/webhook-notice.util.ts';
 
 const LOG_SOURCE = 'Cuenta';
 const DEFAULT_RETRY_AFTER_SECONDS = 2;
@@ -118,13 +120,13 @@ export const useWallet = ({ onCall }: UseWalletOptions) => {
     [attempts, send],
   );
 
-  /** Simula a la pasarela notificando el resultado de una operación. */
+  /**
+   * Simula a la pasarela notificando el resultado de una operación. Después la app vuelve a
+   * consultar la operación con la misma key (como al recibir una notificación push), así el
+   * movimiento y el saldo reflejan lo que el webhook cambió en el backend.
+   */
   const sendWebhook = useCallback(
-    async (
-      key: string,
-      status: 'approved' | 'declined',
-      eventId = `evt_${crypto.randomUUID()}`,
-    ) => {
+    async (key: string, status: WebhookStatus, eventId = `evt_${crypto.randomUUID()}`) => {
       const attempt = attempts.find((candidate) => candidate.idempotencyKey === key);
       if (!attempt?.operationId) {
         return null;
@@ -136,14 +138,17 @@ export const useWallet = ({ onCall }: UseWalletOptions) => {
           event_id: eventId,
           operation_id: attempt.operationId,
           status,
-          ...(status === 'approved' ? { provider_charge_id: `ch_${eventId}` } : {}),
+          ...(status === WebhookStatus.APPROVED ? { provider_charge_id: `ch_${eventId}` } : {}),
         },
         appConfig.webhookSecret,
       );
       onCall(call);
+      const notice = toWebhookNotice(status, call);
+      updateAttempt(key, (current) => ({ ...current, webhooks: [...current.webhooks, notice] }));
+      await send(attempt);
       return eventId;
     },
-    [attempts, onCall, pod],
+    [attempts, onCall, pod, send, updateAttempt],
   );
 
   // Retry automático de la app: ante un 202 / 503 / sin conexión, reintenta con la MISMA key

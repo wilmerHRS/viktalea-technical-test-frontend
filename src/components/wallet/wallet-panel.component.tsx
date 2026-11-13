@@ -1,4 +1,5 @@
 import type { useWallet } from '../../hooks/use-wallet.hook.ts';
+import { WebhookStatus } from '../../types/wallet.types.ts';
 import { formatMoney, shortId } from '../../utils/format.util.ts';
 import { AttemptItem } from './attempt-item.component.tsx';
 import { RechargeForm } from './recharge-form.component.tsx';
@@ -10,9 +11,9 @@ interface WalletPanelProps {
 /** La pantalla de la app: saldo, formulario de recarga y movimientos. */
 export const WalletPanel = ({ wallet }: WalletPanelProps) => {
   const sendDuplicateWebhook = async (key: string) => {
-    const eventId = await wallet.sendWebhook(key, 'approved');
+    const eventId = await wallet.sendWebhook(key, WebhookStatus.APPROVED);
     if (eventId) {
-      await wallet.sendWebhook(key, 'approved', eventId);
+      await wallet.sendWebhook(key, WebhookStatus.APPROVED, eventId);
     }
   };
   const completedCount = wallet.attempts.filter((attempt) => attempt.newBalance !== null).length;

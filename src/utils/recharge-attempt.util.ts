@@ -21,6 +21,7 @@ export const createAttempt = (amount: number, paymentMethod: PaymentMethod): Rec
   requestsSent: 0,
   lastHttpStatus: null,
   retryAfterSeconds: null,
+  webhooks: [],
   createdAt: Date.now(),
 });
 

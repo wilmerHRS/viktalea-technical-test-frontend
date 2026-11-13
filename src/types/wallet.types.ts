@@ -11,6 +11,31 @@ export const AttemptStatus = {
 } as const;
 export type AttemptStatus = (typeof AttemptStatus)[keyof typeof AttemptStatus];
 
+/** Resultado que la pasarela simulada notifica por webhook. */
+export const WebhookStatus = {
+  APPROVED: 'approved',
+  DECLINED: 'declined',
+} as const;
+export type WebhookStatus = (typeof WebhookStatus)[keyof typeof WebhookStatus];
+
+/** Qué hizo el backend con un webhook: lo aplicó, lo ignoró por duplicado, lo rechazó… */
+export const WebhookOutcome = {
+  APPLIED: 'applied',
+  DUPLICATE: 'duplicate',
+  CONFLICT: 'conflict',
+  IGNORED: 'ignored',
+  /** Sin respuesta o con un error HTTP (p. ej. 401 por firma inválida). */
+  ERROR: 'error',
+} as const;
+export type WebhookOutcome = (typeof WebhookOutcome)[keyof typeof WebhookOutcome];
+
+/** Un webhook enviado para un intento y lo que respondió el backend. */
+export interface WebhookNotice {
+  status: WebhookStatus;
+  outcome: WebhookOutcome;
+  httpStatus: number;
+}
+
 /** Un intento de recarga: una Idempotency-Key y todas las requests enviadas con ella. */
 export interface RechargeAttempt {
   idempotencyKey: string;
@@ -27,6 +52,8 @@ export interface RechargeAttempt {
   lastHttpStatus: number | null;
   /** Segundos que pidió esperar el servidor antes de reintentar. */
   retryAfterSeconds: number | null;
+  /** Webhooks que la pasarela simulada envió para esta operación, en orden. */
+  webhooks: WebhookNotice[];
   createdAt: number;
 }
 

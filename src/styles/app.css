@@ -29,7 +29,7 @@
   --shadow: 0 1px 2px rgb(22 26 43 / 4%), 0 8px 24px rgb(22 26 43 / 6%);
   --shadow-phone: 0 2px 6px rgb(22 26 43 / 8%), 0 30px 60px -12px rgb(22 26 43 / 22%);
   --phone-width: 390px;
-  --phone-height: 820px;
+  --phone-height: 844px;
   --phone-min-height: 480px;
   /* Por debajo de esta altura de ventana la página vuelve a hacer scroll. */
   --app-min-height: 620px;
@@ -249,26 +249,39 @@ select:focus {
 
 /*
  * En escritorio la página ocupa exactamente la ventana ("app shell"): no hace scroll la página,
- * sino cada columna por dentro (el teléfono y el panel). Así el teléfono siempre se ve entero.
+ * sino cada columna por dentro. El teléfono va a la izquierda y usa TODO el alto; la cabecera y
+ * el panel van a la derecha.
  */
 .app {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-areas:
+    'phone header'
+    'phone panel';
+  grid-template-columns: var(--phone-width) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 16px 36px;
   max-width: 1440px;
   height: 100dvh;
   min-height: var(--app-min-height);
   margin: 0 auto;
-  padding: 20px 28px;
+  padding: 16px 28px;
+}
+
+.app__phone {
+  display: flex;
+  grid-area: phone;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
 }
 
 .app-header {
   display: flex;
-  flex: none;
+  grid-area: header;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
 }
 
 .brand {
@@ -344,32 +357,9 @@ select:focus {
   color: var(--text-muted);
 }
 
-.layout {
-  display: grid;
-  flex: 1;
-  grid-template-columns: var(--phone-width) minmax(0, 1fr);
-  gap: 32px;
-  min-height: 0;
-}
-
-.layout__phone {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 0;
-}
-
-.layout__caption {
-  flex: none;
-  margin-top: 10px;
-  color: var(--text-muted);
-  font-size: 12.5px;
-  text-align: center;
-}
-
 /* ---------- Teléfono ---------- */
 
-/* El alto lo da el espacio libre de la columna, con un tope para que no se vea estirado. */
+/* El alto lo da toda la columna izquierda, con un tope (el de un teléfono real). */
 .phone {
   flex: 1;
   width: var(--phone-width);
@@ -811,10 +801,52 @@ select:focus {
   gap: 6px;
 }
 
+/* Aviso visible (sin abrir el movimiento) mientras la operación espera a la pasarela. */
+.provider-callout {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 12px 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--info-bg);
+  color: var(--info-text);
+  font-size: 12.5px;
+}
+
+.button--success {
+  border-color: #bfe6cd;
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.button--danger {
+  border-color: #f5c7c7;
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.webhook-notices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0 12px 12px;
+  list-style: none;
+  font-size: 12px;
+}
+
+.webhook-notices li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* ---------- Panel lateral ---------- */
 
 .side-panel {
   display: flex;
+  grid-area: panel;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
@@ -1136,12 +1168,18 @@ select:focus {
 /* Una columna: vuelve el scroll normal de la página y el teléfono cabe en la ventana. */
 @media (width <= 1000px) {
   .app {
+    grid-template-areas:
+      'header'
+      'phone'
+      'panel';
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
     height: auto;
     min-height: 0;
   }
 
-  .layout {
-    grid-template-columns: 1fr;
+  .app__phone {
+    align-items: center;
   }
 
   .phone {

@@ -9,6 +9,10 @@ import { useApiLog } from './hooks/use-api-log.hook.ts';
 import { useWallet } from './hooks/use-wallet.hook.ts';
 import { SCENARIOS } from './scenarios/scenarios.registry.ts';
 
+/**
+ * Teléfono a la izquierda (todo el alto de la ventana); cabecera y panel a la derecha. En pantallas
+ * estrechas el CSS los apila: cabecera, teléfono y panel.
+ */
 export const App = () => {
   const apiLog = useApiLog();
   const wallet = useWallet({ onCall: apiLog.record });
@@ -18,32 +22,29 @@ export const App = () => {
   ).length;
 
   return (
-    <div className="app">
+    <main className="app">
+      <div className="app__phone">
+        <PhoneFrame>
+          <WalletPanel wallet={wallet} />
+        </PhoneFrame>
+      </div>
       <AppHeader />
-      <main className="layout">
-        <div className="layout__phone">
-          <PhoneFrame>
-            <WalletPanel wallet={wallet} />
-          </PhoneFrame>
-          <p className="layout__caption">La cuenta del usuario, como la vería en la app.</p>
-        </div>
-        <SidePanel
-          tabs={[
-            {
-              id: 'scenarios',
-              label: 'Escenarios',
-              counter: `${passedCount}/${SCENARIOS.length}`,
-              content: <ScenarioPanel runner={runner} />,
-            },
-            {
-              id: 'log',
-              label: 'Registro de llamadas',
-              counter: String(apiLog.calls.length),
-              content: <ApiLog calls={apiLog.calls} onClear={apiLog.clear} />,
-            },
-          ]}
-        />
-      </main>
-    </div>
+      <SidePanel
+        tabs={[
+          {
+            id: 'scenarios',
+            label: 'Escenarios',
+            counter: `${passedCount}/${SCENARIOS.length}`,
+            content: <ScenarioPanel runner={runner} />,
+          },
+          {
+            id: 'log',
+            label: 'Registro de llamadas',
+            counter: String(apiLog.calls.length),
+            content: <ApiLog calls={apiLog.calls} onClear={apiLog.clear} />,
+          },
+        ]}
+      />
+    </main>
   );
 };

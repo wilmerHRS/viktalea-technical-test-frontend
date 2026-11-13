@@ -11,7 +11,7 @@ Backend: [`viktalea-technical-test`](../viktalea-technical-test).
 ```bash
 # 1. Backend (en ../viktalea-technical-test): BD + dos pods
 npm run db:up && npm run db:migrate
-PORT=3000 RECONCILE_INTERVAL_MS=3000 RECONCILE_AFTER_MS=5000 npm run dev   # pod A (reconciliador rápido)
+PORT=3000 RECONCILE_INTERVAL_MS=3000 RECONCILE_AFTER_MS=30000 npm run dev  # pod A (reconciliador)
 PORT=3001 RECONCILE_INTERVAL_MS=3600000 npm run dev                         # pod B
 
 # 2. Frontend (aquí)
@@ -34,6 +34,14 @@ A la izquierda, **la cuenta dentro de un teléfono** (como la vería el usuario 
 | **Registro de llamadas**     | Todas las requests reales al backend: pod, key, código HTTP, duración, request y respuesta.                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 `payment_method` elige el comportamiento de la pasarela simulada: aprueba, rechaza, aprueba lento (3 s), cobra pero no responde (la pregunta central), no cobra y no responde, o error de red.
+
+### Probar el webhook a mano (`POST /webhooks/payment`)
+
+1. Elige la tarjeta **"No cobra y no responde"** (o "Cobra pero no responde") y desactiva el retry automático.
+2. Pulsa **Recargar**: el movimiento queda _pendiente_ y aparece el aviso **"Esperando a la pasarela"** con los botones `approved` / `declined`.
+3. Pulsa uno: el navegador firma el webhook (HMAC) y lo envía; luego la app vuelve a consultar la operación con la misma key. El movimiento muestra lo que hizo el backend (`aplicado`, `duplicado, ignorado`, `conflicto, no cambia nada`) y el saldo se actualiza.
+
+Tienes **30 s** (`RECONCILE_AFTER_MS` del pod A) antes de que el reconciliador cierre la operación. Si el webhook llega después, el backend responde `conflict`: es el caso de webhook fuera de orden. Al abrir un movimiento también puedes enviar `approved`, `declined` o el mismo evento dos veces (duplicado ×2).
 
 ## Escenarios
 
